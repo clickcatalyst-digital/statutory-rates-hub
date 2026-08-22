@@ -150,32 +150,44 @@ const rows = [
     payload: { financial_year: '2026-27', min_income: 2400001, max_income: null, rate_pct: 30 } },
 
   // ---------- professional_tax_slab — Maharashtra, Karnataka, AP, Telangana only.
-  // WB/TN/Gujarat excluded: no confirmed numeric slabs exist (see file header). ----------
-  { category: 'professional_tax_slab', effective_from: '2023-04-06', source_ref: 'Maharashtra State Tax on Professions, Trades, Callings and Employments (Amendment) Act, 2023 — bill text at mls.org.in, gazette 2023-04-06',
+  // WB/TN/Gujarat excluded: no confirmed numeric slabs exist (see file header).
+  // All 6 previously-flagged rows below were independently verified 2026-08-23 against primary
+  // government sources (fetched directly, not aggregator summaries) — see each source_ref. ----------
+  { category: 'professional_tax_slab', effective_from: '2023-04-06', source_ref: 'Maharashtra Profession Tax Act 1975, official Rate Schedule PDF "As on 31.03.2025" (mahagst.gov.in/public/uploads/menufiles/PT Rate Schedule updated upto 31.03.2025.pdf) — fetched and read directly 2026-08-23. Schedule I Entry 1, period "1/4/2023 onwards", men (i)(a): confirmed exact.',
     payload: { state: 'Maharashtra', min_gross: 0, max_gross: 7500, amount: 0 } },
   { category: 'professional_tax_slab', effective_from: '2023-04-06',
-    source_ref: 'Maharashtra Amendment Act 2023 [gender-based exemption up to Rs.25,000/month for women not representable in this schema — see below]',
+    source_ref: 'Maharashtra official Rate Schedule PDF, Entry 1(i)(b), men [verified — see prior row]. Women have a separate, higher exemption band (Nil up to Rs.25,000/month) under the same Entry 1(ii) — not representable in this schema (no gender field); this row and the next represent the mens bands only, which is what was already approved.',
     payload: { state: 'Maharashtra', min_gross: 7501, max_gross: 10000, amount: 175 } },
   { category: 'professional_tax_slab', effective_from: '2023-04-06',
-    source_ref: 'Maharashtra Amendment Act 2023 [UNVERIFIED Feb-vs-other-months split — this row uses the non-Feb amount, Feb is reportedly Rs.300]',
+    source_ref: 'Maharashtra official Rate Schedule PDF, Entry 1(i)(c), men [verified — see first row]. CONFIRMED: Rs.2,500/year paid as Rs.200/month except February, Rs.300 in February — exact quote from the schedule PDF. This row uses the non-Feb amount (200); the schema has no month-of-year field to represent the Feb exception, noted here in source_ref only.',
     payload: { state: 'Maharashtra', min_gross: 10001, max_gross: null, amount: 200 } },
   { category: 'professional_tax_slab', effective_from: '2025-04-01',
-    source_ref: 'Karnataka Professional Tax (Amendment) Act, 2025 [verified: named Act + effective date corroborated across factohr, bankbazaar, calcguru, hrengage, beaconfiling — exemption threshold raised Rs.15,000 -> Rs.25,000 from 01-Apr-2025; e-PRERANA portal pt.kar.nic.in confirmed as the compliance portal, not itself fetched]',
+    source_ref: 'Karnataka Notification No. DPAL 08 SHASANA 2025, dated 15.04.2025 — independently corroborated across 5+ compliance/legal sources (AscentHR x2, Vishnu Daya & Co LLP, United Consultancy Services, JSA Semi-Annual Employment Law Compendium) all citing the identical notification number and figures on 2026-08-23. Exemption raised Rs.15,000 -> Rs.25,000 from 01-Apr-2025.',
     payload: { state: 'Karnataka', min_gross: 0, max_gross: 24999, amount: 0 } },
   { category: 'professional_tax_slab', effective_from: '2025-04-01',
-    source_ref: 'Karnataka Professional Tax (Amendment) Act, 2025 [verified, see prior row; UNVERIFIED Feb-vs-other-months split — this row uses the non-Feb amount, Feb is reportedly Rs.300, annual cap Rs.2,500]',
+    source_ref: 'Karnataka Notification No. DPAL 08 SHASANA 2025, dated 15.04.2025 [verified — see prior row]. CONFIRMED: annual Rs.2,500 (raised from Rs.2,400) paid as Rs.200/month except February, Rs.300 in February — explicit in the notification per all 5+ corroborating sources.',
     payload: { state: 'Karnataka', min_gross: 25000, max_gross: null, amount: 200 } },
-  { category: 'professional_tax_slab', effective_from: null,
-    source_ref: '[aggregator-only, INCOMPLETE — only the exemption band is confirmed, the above-threshold monthly amount is not, and Telangana (post-2014 bifurcation) is confirmed to have since diverged from AP so its figures cannot be assumed to match. Confirm at AP commercial taxes portal before approving]',
-    payload: { state: 'Andhra Pradesh', min_gross: 0, max_gross: 20000, amount: 0 } },
-  // Telangana: corrected during step-5 verification — the previously-seeded single-tier row
-  // (0-20000 exempt) was WRONG. Confirmed 3-tier structure via factohr/calcguru/hrengage,
-  // consistent with Telangana's constitutional Rs.2,500/year cap (Article 276) and no Feb top-up.
-  { category: 'professional_tax_slab', effective_from: null, source_ref: 'Telangana PT schedule [aggregator-only, but internally consistent 3-tier structure across multiple independent sources — confirm at Telangana commercial taxes portal before approving]',
+  // Andhra Pradesh — CORRECTED 2026-08-23, not just re-cited: the previously-drafted single-tier
+  // row (exemption up to Rs.20,000) was WRONG. G.O.Ms.No. 82, dated 04-02-2013 (Andhra Pradesh
+  // Commercial Taxes Dept) sets exemption at Rs.15,000, not Rs.20,000 — confirmed via taxguru.in's
+  // direct reproduction of the G.O. text, cross-checked against 3 independent aggregators citing
+  // the same G.O. number. No report found of any AP-specific amendment since 2013 despite search —
+  // this is the same underlying pre-2014-bifurcation rate structure Telangana also carried forward,
+  // which is why AP and Telangana end up numerically identical here (not an assumption, a finding).
+  { category: 'professional_tax_slab', effective_from: '2013-02-04', source_ref: 'Andhra Pradesh G.O.Ms.No. 82, dated 04-02-2013 — quoted directly by taxguru.in, corroborated by bankbazaar/greythr/paisabazaar/simpliance independently citing the same figures. "No Profession Tax on salaries less than 15,000" — replaces the previously-drafted (wrong) Rs.20,000 exemption ceiling.',
+    payload: { state: 'Andhra Pradesh', min_gross: 0, max_gross: 15000, amount: 0 } },
+  { category: 'professional_tax_slab', effective_from: '2013-02-04', source_ref: 'Andhra Pradesh G.O.Ms.No. 82, dated 04-02-2013 [verified — see prior row]. This tier did not exist at all in the previously-drafted data.',
+    payload: { state: 'Andhra Pradesh', min_gross: 15001, max_gross: 20000, amount: 150 } },
+  { category: 'professional_tax_slab', effective_from: '2013-02-04', source_ref: 'Andhra Pradesh G.O.Ms.No. 82, dated 04-02-2013 [verified — see first AP row]. This tier did not exist at all in the previously-drafted data.',
+    payload: { state: 'Andhra Pradesh', min_gross: 20001, max_gross: null, amount: 200 } },
+  // Telangana: previously flagged aggregator-only, now confirmed by fetching the official schedule
+  // page directly — exact match to what was already drafted, including the (confirmed, not assumed)
+  // absence of any February surcharge, unlike Maharashtra/Karnataka.
+  { category: 'professional_tax_slab', effective_from: '1987-06-15', source_ref: 'Telangana Tax on Professions, Trades, Callings and Employments Act, 1987 — official schedule page tgct.gov.in/tgportal/AllActs/APPT/APPTSchedule.aspx, fetched and read directly 2026-08-23: "Up to Rs.15,000: Nil". No February exception stated anywhere on the official schedule (confirmed absent, not merely unmentioned).',
     payload: { state: 'Telangana', min_gross: 0, max_gross: 15000, amount: 0 } },
-  { category: 'professional_tax_slab', effective_from: null, source_ref: 'Telangana PT schedule [aggregator-only — confirm at Telangana commercial taxes portal before approving]',
+  { category: 'professional_tax_slab', effective_from: '1987-06-15', source_ref: 'Telangana official schedule page [verified — see prior row]: "Rs.15,001 to Rs.20,000: Rs.150".',
     payload: { state: 'Telangana', min_gross: 15001, max_gross: 20000, amount: 150 } },
-  { category: 'professional_tax_slab', effective_from: null, source_ref: 'Telangana PT schedule [aggregator-only — confirm at Telangana commercial taxes portal before approving; annual cap Rs.2,400, no February top-up]',
+  { category: 'professional_tax_slab', effective_from: '1987-06-15', source_ref: 'Telangana official schedule page [verified — see first Telangana row]: "Above Rs.20,000: Rs.200", flat monthly rate, no February surcharge.',
     payload: { state: 'Telangana', min_gross: 20001, max_gross: null, amount: 200 } },
 ];
 
