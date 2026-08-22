@@ -1,0 +1,10 @@
+body { font-family: -apple-system, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+h1 { font-size: 1.4rem; }
+table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9rem; }
+th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid #ddd; vertical-align: top; }
+form { display: grid; gap: 0.5rem; max-width: 480px; margin-top: 1rem; }
+input, select, textarea { padding: 0.4rem; font-size: 0.9rem; }
+button { padding: 0.4rem 0.8rem; cursor: pointer; }
+.draft { color: #a15c00; }
+.approved { color: #0a7a2f; }
+code { background: #f2f2f2; padding: 0.1rem 0.3rem; }
