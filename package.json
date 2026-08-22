@@ -8,7 +8,10 @@
     "build": "next build",
     "start": "next start",
     "add-tenant": "node scripts/add-tenant.mjs",
-    "selfcheck": "node scripts/selfcheck.mjs"
+    "selfcheck": "node scripts/selfcheck.mjs",
+    "test": "node --test scripts/test-lifecycle.mjs",
+    "test-sandbox": "node scripts/test-sandbox.mjs",
+    "seed-rates": "node scripts/seed-rates.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",
