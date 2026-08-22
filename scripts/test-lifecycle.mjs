@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 process.env.DB_PATH = './statutory-rates-hub-test-lifecycle.db';
 if (existsSync(process.env.DB_PATH)) unlinkSync(process.env.DB_PATH);
 
-const { createDraft, createDraftsBulk, approve, approveBulk, listAll, listSince, diffAndDraft } =
+const { createDraft, createDraftsBulk, approve, approveBulk, listAll, listSince, diffAndDraft, retract } =
   await import('../lib/rates.js');
 
 after(() => {
@@ -247,6 +247,95 @@ test('admin routes require x-admin-key via checkAdminKey, not the tenant key fun
   assert.equal(typeof authMod.tenantForKey, 'function');
   const fakeReqNoAdminKey = { headers: new Headers({ 'x-api-key': 'some-tenant-key' }) };
   assert.equal(authMod.checkAdminKey(fakeReqNoAdminKey), false, 'a tenant key must not satisfy the admin check');
+});
+
+// ---------- retraction (for an approved row that was wrong from inception, not a later change) ----------
+
+test('retract() marks retraction metadata but leaves category/payload/effective_from/effective_to/source_ref byte-for-byte unchanged', async () => {
+  const id = await createDraft({ category: 'gst_rate', payload: { hsn_code: 'r1', rate_pct: 18 }, effective_from: '2026-01-01', source_ref: 's' });
+  await approve(id, 'tester');
+  const before = (await listAll()).find((r) => r.id === id);
+
+  const ok = await retract(id, { retracted_by: 'tester', retraction_reason: 'approved by mistake' });
+  assert.equal(ok, true);
+
+  const after = (await listAll()).find((r) => r.id === id);
+  assert.equal(after.category, before.category);
+  assert.deepEqual(after.payload, before.payload);
+  assert.equal(after.effective_from, before.effective_from);
+  assert.equal(after.effective_to, before.effective_to);
+  assert.equal(after.source_ref, before.source_ref);
+  assert.equal(after.approved_at, before.approved_at, 'approval record itself must also stay untouched');
+  assert.ok(after.retracted_at);
+  assert.equal(after.retracted_by, 'tester');
+  assert.equal(after.retraction_reason, 'approved by mistake');
+});
+
+test('retract() requires a reason', async () => {
+  const id = await createDraft({ category: 'gst_rate', payload: { hsn_code: 'r2', rate_pct: 18 }, effective_from: '2026-01-01', source_ref: 's' });
+  await approve(id, 'tester');
+  await assert.rejects(() => retract(id, { retracted_by: 'tester' }));
+});
+
+test('retract() only applies to approved rows — a draft is a no-op, not a silent success', async () => {
+  const id = await createDraft({ category: 'gst_rate', payload: { hsn_code: 'r3', rate_pct: 18 }, effective_from: '2026-01-01', source_ref: 's' });
+  const ok = await retract(id, { retracted_by: 'tester', retraction_reason: 'x' });
+  assert.equal(ok, false);
+  const row = (await listAll()).find((r) => r.id === id);
+  assert.equal(row.retracted_at, null);
+});
+
+test('retract() is idempotent — retracting an already-retracted row is a no-op', async () => {
+  const id = await createDraft({ category: 'gst_rate', payload: { hsn_code: 'r4', rate_pct: 18 }, effective_from: '2026-01-01', source_ref: 's' });
+  await approve(id, 'tester');
+  assert.equal(await retract(id, { retracted_by: 'a', retraction_reason: 'first' }), true);
+  assert.equal(await retract(id, { retracted_by: 'b', retraction_reason: 'second' }), false, 'must not overwrite the original retraction record');
+  const row = (await listAll()).find((r) => r.id === id);
+  assert.equal(row.retracted_by, 'a', 'the second retract() call must not have changed who retracted it');
+});
+
+test('a retracted row can never sync to Shanti Ops — excluded from listSince even though approved', async () => {
+  const id = await createDraft({ category: 'gst_rate', payload: { hsn_code: 'r5', rate_pct: 18 }, effective_from: '2026-01-01', source_ref: 's' });
+  await approve(id, 'tester');
+  // cursor scoped to just before this row, not 0 — the earlier LIMIT-500 pagination test already
+  // pushed hundreds of rows ahead of it, so a from-0 pull would miss it on page one regardless
+  assert.ok((await listSince(id - 1)).find((r) => r.id === id), 'sanity check: visible before retraction');
+
+  await retract(id, { retracted_by: 'tester', retraction_reason: 'wrong from the start' });
+  assert.equal((await listSince(id - 1)).find((r) => r.id === id), undefined, 'retracted-but-approved row must not appear in the tenant feed');
+});
+
+test('194A-style scenario: retract a wrong approved value, then approve a corrected replacement at the SAME effective_from', async () => {
+  const wrongId = await createDraft({ category: 'vendor_tds_rate', payload: { section: 'r6', description: 'x', rate_pct: 10, threshold_amount: 5000 }, effective_from: '2026-04-01', source_ref: 's' });
+  await approve(wrongId, 'tester');
+
+  await retract(wrongId, { retracted_by: 'tester', retraction_reason: 'threshold was 5000, should be 10000' });
+
+  // same effective_from as the retracted row — must NOT be rejected as a same-date conflict
+  const r = await diffAndDraft([{ category: 'vendor_tds_rate', payload: { section: 'r6', description: 'x', rate_pct: 10, threshold_amount: 10000 }, effective_from: '2026-04-01', source_ref: 's2' }]);
+  assert.equal(r.created, 1);
+  assert.equal(r.rejected.length, 0);
+
+  const correctedId = (await listAll()).find((row) => row.payload.section === 'r6' && row.payload.threshold_amount === 10000).id;
+  await approve(correctedId, 'tester');
+
+  const since = await listSince(0, 'vendor_tds_rate');
+  const r6rows = since.filter((row) => row.payload.section === 'r6');
+  assert.equal(r6rows.length, 1, 'only the corrected value should reach the tenant feed');
+  assert.equal(r6rows[0].payload.threshold_amount, 10000);
+});
+
+test('206C(1H)-style scenario: retract an approved row with NO replacement — identity fully vacated', async () => {
+  const id = await createDraft({ category: 'vendor_tds_rate', payload: { section: 'r7', description: 'y', rate_pct: 0.1, threshold_amount: 5000000 }, effective_from: '2026-04-01', source_ref: 's' });
+  await approve(id, 'tester');
+  await retract(id, { retracted_by: 'tester', retraction_reason: 'provision does not exist under the new Act — erroneously seeded' });
+
+  assert.equal((await listSince(0, 'vendor_tds_rate')).find((row) => row.payload.section === 'r7'), undefined);
+
+  // a genuinely new, unrelated future version for this identity must still be possible later —
+  // retraction must not permanently block the identity
+  const r = await diffAndDraft([{ category: 'vendor_tds_rate', payload: { section: 'r7', description: 'y', rate_pct: 0.2, threshold_amount: 6000000 }, effective_from: '2027-01-01', source_ref: 's3' }]);
+  assert.equal(r.created, 1);
 });
 
 // ---------- explicitly out of scope, documented rather than faked ----------

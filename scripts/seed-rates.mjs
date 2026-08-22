@@ -84,11 +84,11 @@ const rows = [
     source_ref: 'Income-tax Act 2025 Sec 393(1) [section number verified — see file header note; rate/threshold not independently re-checked]',
     payload: { section: '194H', description: 'Commission or brokerage — new Act Section 393(1)', rate_pct: 2, threshold_amount: 20000 } },
   { category: 'vendor_tds_rate', effective_from: '2026-04-01',
-    source_ref: 'Income-tax Act 2025 Sec 393(1) [section number verified; threshold amount still UNVERIFIED for FY26-27 — confirm at incometaxindia.gov.in]',
-    payload: { section: '194I', description: 'Rent — plant & machinery — new Act Section 393(1)', rate_pct: 2, threshold_amount: 240000 } },
+    source_ref: 'Income-tax Act 2025 Sec 393(1) Table Sl.2, verified directly against the bare Act text (Income_Tax_Act_2025_as_amended_by_FA_Act_2026.pdf, incometaxindia.gov.in) — CORRECTED 2026-08-23: threshold is Rs.50,000 PER MONTH OR PART OF A MONTH, not an annual Rs.2,40,000 figure (the old 1961-Act structure). description kept unchanged (identity-bearing field) — the "per month" unit lives here in source_ref since threshold_amount is a bare number with no period field.',
+    payload: { section: '194I', description: 'Rent — plant & machinery — new Act Section 393(1)', rate_pct: 2, threshold_amount: 50000 } },
   { category: 'vendor_tds_rate', effective_from: '2026-04-01',
-    source_ref: 'Income-tax Act 2025 Sec 393(1) [section number verified; threshold amount still UNVERIFIED for FY26-27 — confirm at incometaxindia.gov.in]',
-    payload: { section: '194I', description: 'Rent — land / building / furniture — new Act Section 393(1)', rate_pct: 10, threshold_amount: 240000 } },
+    source_ref: 'Income-tax Act 2025 Sec 393(1) Table Sl.2, verified directly against the bare Act text (Income_Tax_Act_2025_as_amended_by_FA_Act_2026.pdf, incometaxindia.gov.in) — CORRECTED 2026-08-23: threshold is Rs.50,000 PER MONTH OR PART OF A MONTH, not an annual Rs.2,40,000 figure (the old 1961-Act structure). description kept unchanged (identity-bearing field) — the "per month" unit lives here in source_ref since threshold_amount is a bare number with no period field.',
+    payload: { section: '194I', description: 'Rent — land / building / furniture — new Act Section 393(1)', rate_pct: 10, threshold_amount: 50000 } },
   { category: 'vendor_tds_rate', effective_from: '2026-04-01',
     source_ref: 'Income-tax Act 2025 Sec 393(1) Table S.No. 6(iii) [section number verified — see file header note; rate/threshold not independently re-checked]',
     payload: { section: '194J', description: 'Professional fees — new Act Section 393(1) Table S.No. 6(iii)', rate_pct: 10, threshold_amount: 50000 } },
@@ -98,12 +98,17 @@ const rows = [
   { category: 'vendor_tds_rate', effective_from: '2026-04-01',
     source_ref: 'Income-tax Act 2025 Sec 393(1) [section number verified — see file header note; rate/threshold not independently re-checked]',
     payload: { section: '194Q', description: 'Purchase of goods (buyer TDS, buyer turnover > 10cr preceding year) — new Act Section 393(1) — overrides 206C(1H) where both apply', rate_pct: 0.1, threshold_amount: 5000000 } },
+  // 206C(1H) — DELIBERATELY ABSENT, not merely omitted by oversight. This provision does not exist
+  // in Income-tax Act 2025 Section 394's TCS table (confirmed against the bare Act text 2026-08-23
+  // — no generic goods-sale item anywhere in Sl.1-9). Finance Act 2025 made it inapplicable from
+  // 2025-04-01, independently corroborated (taxguru.in, SAP KB 3574318/3576728, indiafilings.com).
+  // The approved row that once represented this (id 215) was RETRACTED on 2026-08-23 as an
+  // admin error, with no replacement — do not re-add a candidate for this identity; retracted rows
+  // are excluded from diffAndDraft's version detection, so re-adding one here would be treated as
+  // a brand-new identity and silently draft a rule that doesn't exist under current law.
   { category: 'vendor_tds_rate', effective_from: '2026-04-01',
-    source_ref: 'Income-tax Act 2025 Sec 394 (TCS) [section number verified — see file header note; rate/threshold not independently re-checked]',
-    payload: { section: '206C(1H)', description: 'TCS on sale of goods (seller-side, seller turnover > 10cr preceding year) — new Act Section 394', rate_pct: 0.1, threshold_amount: 5000000 } },
-  { category: 'vendor_tds_rate', effective_from: '2026-04-01',
-    source_ref: 'Income-tax Act 2025 Sec 393(1) [section number verified — see file header note; rate/threshold not independently re-checked]',
-    payload: { section: '194A', description: 'Interest other than on securities — general payer threshold (bank/post-office deposit thresholds differ, not representable in one field) — new Act Section 393(1)', rate_pct: 10, threshold_amount: 5000 } },
+    source_ref: 'Income-tax Act 2025 Sec 393(1) Table Sl.5(iii), verified directly against the bare Act text (Income_Tax_Act_2025_as_amended_by_FA_Act_2026.pdf, incometaxindia.gov.in) on 2026-08-23: this row represents the general/other-specified-person case (Sl.5(iii)), threshold Rs.10,000, confirmed correct classification (not the bank/co-op/post-office case, Sl.5(ii), which separately has Rs.50,000/Rs.1,00,000 senior-citizen thresholds, not modeled here). Corrected replacement for a RETRACTED approved row (id 216, incorrectly had threshold Rs.5,000) — same effective_from, per the Hub RETRACTED lifecycle. Still a draft, pending approval.',
+    payload: { section: '194A', description: 'Interest other than on securities — general payer threshold (bank/post-office deposit thresholds differ, not representable in one field) — new Act Section 393(1)', rate_pct: 10, threshold_amount: 10000 } },
   { category: 'vendor_tds_rate', effective_from: '2026-04-01',
     source_ref: 'Income-tax Act 2025 Sec 397(2) [verified: consolidation of old 206AA+206CC into 397(2) corroborated across tdsman.com, taxguru, cleartax, aaaa.co.in; primary Act text not directly fetched]',
     payload: { section: '206AA/206CC', description: 'PAN not furnished — higher of: section rate, 20%, or rate in force — new Act Section 397(2). Note: purchase-of-goods (194Q) and e-commerce exceptions use 5% instead of 20% per some sources — not verified, this row is the general case.', rate_pct: 20, threshold_amount: null } },
@@ -123,24 +128,25 @@ const rows = [
       esi_employee_pct: 0.75, esi_employer_pct: 3.25, esi_wage_ceiling: 21000,
     } },
   { category: 'statutory_rate', effective_from: '2026-04-01',
-    source_ref: 'PIB PRID=2098406 [UNVERIFIED — WebFetch 403d, corroborated via search snippets + PIB social post only — confirm primary text before approving]',
+    source_ref: 'Income-tax Act 2025 Sec 19 (standard deduction, Rs.75,000 or salary whichever less) + Sec 156(2) (rebate: 100% of tax or Rs.60,000 whichever less, for income under Sec 202(1) not exceeding Rs.12,00,000) — verified directly against the bare Act text (Income_Tax_Act_2025_as_amended_by_FA_Act_2026.pdf, incometaxindia.gov.in) on 2026-08-23. Both figures confirmed exact.',
     payload: { standard_deduction: 75000, tds_rebate_income_threshold: 1200000 } },
 
   // ---------- income_tax_slab — new/default regime (the only regime Shanti Ops' payroll query
   // and insert function support today), Income-tax Act 2025, FY 2026-27 ----------
-  { category: 'income_tax_slab', effective_from: '2026-04-01', source_ref: 'PIB PRID=2098406 [UNVERIFIED — WebFetch 403d again this round, not in step-5 priority list, still only corroborated via search snippets + PIB social post — confirm primary text]',
+  { category: 'income_tax_slab', effective_from: '2026-04-01',
+    source_ref: 'Income-tax Act 2025 Section 202(1) Table — verified directly against the bare Act text (Income_Tax_Act_2025_as_amended_by_FA_Act_2026.pdf, incometaxindia.gov.in) on 2026-08-23. All 7 slabs confirmed byte-for-byte exact.',
     payload: { financial_year: '2026-27', min_income: 0, max_income: 400000, rate_pct: 0 } },
-  { category: 'income_tax_slab', effective_from: '2026-04-01', source_ref: 'PIB PRID=2098406 [UNVERIFIED — see note on first row]',
+  { category: 'income_tax_slab', effective_from: '2026-04-01', source_ref: 'Income-tax Act 2025 Section 202(1) Table [verified — see note on first row]',
     payload: { financial_year: '2026-27', min_income: 400001, max_income: 800000, rate_pct: 5 } },
-  { category: 'income_tax_slab', effective_from: '2026-04-01', source_ref: 'PIB PRID=2098406 [UNVERIFIED — see note on first row]',
+  { category: 'income_tax_slab', effective_from: '2026-04-01', source_ref: 'Income-tax Act 2025 Section 202(1) Table [verified — see note on first row]',
     payload: { financial_year: '2026-27', min_income: 800001, max_income: 1200000, rate_pct: 10 } },
-  { category: 'income_tax_slab', effective_from: '2026-04-01', source_ref: 'PIB PRID=2098406 [UNVERIFIED — see note on first row]',
+  { category: 'income_tax_slab', effective_from: '2026-04-01', source_ref: 'Income-tax Act 2025 Section 202(1) Table [verified — see note on first row]',
     payload: { financial_year: '2026-27', min_income: 1200001, max_income: 1600000, rate_pct: 15 } },
-  { category: 'income_tax_slab', effective_from: '2026-04-01', source_ref: 'PIB PRID=2098406 [UNVERIFIED — see note on first row]',
+  { category: 'income_tax_slab', effective_from: '2026-04-01', source_ref: 'Income-tax Act 2025 Section 202(1) Table [verified — see note on first row]',
     payload: { financial_year: '2026-27', min_income: 1600001, max_income: 2000000, rate_pct: 20 } },
-  { category: 'income_tax_slab', effective_from: '2026-04-01', source_ref: 'PIB PRID=2098406 [UNVERIFIED — see note on first row]',
+  { category: 'income_tax_slab', effective_from: '2026-04-01', source_ref: 'Income-tax Act 2025 Section 202(1) Table [verified — see note on first row]',
     payload: { financial_year: '2026-27', min_income: 2000001, max_income: 2400000, rate_pct: 25 } },
-  { category: 'income_tax_slab', effective_from: '2026-04-01', source_ref: 'PIB PRID=2098406 [UNVERIFIED — see note on first row]',
+  { category: 'income_tax_slab', effective_from: '2026-04-01', source_ref: 'Income-tax Act 2025 Section 202(1) Table [verified — see note on first row]',
     payload: { financial_year: '2026-27', min_income: 2400001, max_income: null, rate_pct: 30 } },
 
   // ---------- professional_tax_slab — Maharashtra, Karnataka, AP, Telangana only.
