@@ -404,6 +404,22 @@ test('the refresh route only exports POST and GET — POST for the cron trigger,
   assert.ok(src.includes('checkAdminKey'), 'GET must be gated by the admin key');
 });
 
+test('the retract route is admin-key gated and calls retract()', () => {
+  const path = fileURLToPath(new URL('../app/api/rates/[id]/retract/route.js', import.meta.url));
+  const src = readFileSync(path, 'utf8');
+  assert.ok(/export\s+async\s+function\s+POST\b/.test(src));
+  assert.ok(src.includes('checkAdminKey'));
+  assert.ok(src.includes('retract('));
+});
+
+test('the bulk-approve route is admin-key gated and calls approveBulk()', () => {
+  const path = fileURLToPath(new URL('../app/api/rates/bulk-approve/route.js', import.meta.url));
+  const src = readFileSync(path, 'utf8');
+  assert.ok(/export\s+async\s+function\s+POST\b/.test(src));
+  assert.ok(src.includes('checkAdminKey'));
+  assert.ok(src.includes('approveBulk('));
+});
+
 // ---------- explicitly out of scope, documented rather than faked ----------
 // "Failed sync doesn't advance the cursor" is Shanti Ops' responsibility, not the Hub's: the cursor
 // lives in Shanti Ops' own hub_sync_state table (see ../shanti-ops/lib/rate-sync.js), and is only

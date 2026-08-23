@@ -57,11 +57,15 @@ statutory-rate source to fetch from (see above). Its only job is to make sure a 
 change to `lib/seed-data.js`, once committed, gets drafted on the next scheduled run rather than
 sitting until someone remembers to run `npm run seed-rates` by hand. It never approves anything.
 
-Meant to be called by a Cloudflare Worker's Cron Trigger (`fetch()`ing this endpoint with the
-shared secret) — the endpoint exists; setting up the actual Cron Trigger is a separate step done
-outside this repo.
+Called by a Cloudflare Worker's Cron Trigger — `workers/hub-refresh-cron/` (deployed, same pattern
+as `shanti-ops/workers/rate-sync-cron`). Schedule: `30 20 * * *` (20:30 UTC = 02:00 IST daily) —
+30 minutes ahead of Shanti Ops' own sync cron, so the Hub finishes refreshing before any tenant
+pulls from it. The Worker pings a dedicated healthchecks.io check on success/failure (secrets:
+`REFRESH_JOB_SECRET`, `HEALTHCHECK_URL`, set via `wrangler secret put`, never committed) — if the
+cron itself stops firing, healthchecks.io emails, since nothing else can detect that.
 
-`GET /api/refresh` (`x-admin-key`) returns the most recent heartbeat, for manual/monitoring checks.
+`GET /api/refresh` (`x-admin-key`) returns the most recent heartbeat, for manual/monitoring checks
+— also shown at the top of the admin UI.
 
 **Deferred, not built**: an independent "Discovery" layer that polls real government/provider
 sources, flags a *potential* change as "review required" in the Hub, and leaves it to a human to
@@ -82,6 +86,20 @@ no rate-lookup/slab endpoint for GST, TDS, or Income Tax (checked directly again
 Income Tax is calculators/OCR/reports only, GST is compliance/filing/reconciliation only, TDS is
 per-transaction calculators only). Not part of the rates lifecycle above, not touched by the
 refresh job, not a source `lib/seed-data.js` is derived from.
+
+## Admin UI
+
+`app/page.js` — shadcn/ui + Tailwind v4 (`nova` preset, base-ui primitives). Shows the daily
+refresh heartbeat, lets you create/approve/bulk-approve/retract rows without hitting the API
+directly:
+
+- **Approve** (single) and **Approve selected** (checkbox-driven bulk, calls
+  `POST /api/rates/bulk-approve`) for drafts.
+- **Retract** for approved rows — prompts for a reason (required), calls
+  `POST /api/rates/:id/retract`. A retracted row's status badge and reason are shown inline, not
+  conflated with "approved" (an earlier version of this UI didn't distinguish them at all — a
+  retracted row looked identical to a live approved one, which is actively misleading for
+  compliance data).
 
 ## Running it
 
