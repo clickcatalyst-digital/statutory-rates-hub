@@ -1,0 +1,13 @@
+name = "statutory-rates-hub-refresh-cron"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# 20:30 UTC = 02:00 IST (next day). Cloudflare Cron Triggers run in UTC, standard 5-field syntax.
+[triggers]
+crons = ["30 20 * * *"]
+
+# Not secret — the endpoint address itself is already public-facing. The actual credential
+# (REFRESH_JOB_SECRET) and the healthcheck ping URL (HEALTHCHECK_URL) are set as Worker secrets
+# instead (wrangler secret put), never committed here.
+[vars]
+REFRESH_URL = "https://statutory-rates-hub.onrender.com/api/refresh"
