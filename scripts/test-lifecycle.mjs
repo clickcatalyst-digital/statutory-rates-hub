@@ -20,6 +20,8 @@ if (existsSync(process.env.DB_PATH)) unlinkSync(process.env.DB_PATH);
 
 const { createDraft, createDraftsBulk, approve, approveBulk, listAll, listSince, diffAndDraft, retract } =
   await import('../lib/rates.js');
+const { runRefresh, latestRefreshRun } = await import('../lib/refresh.js');
+const { checkRefreshKey } = await import('../lib/auth.js');
 
 after(() => {
   if (existsSync(process.env.DB_PATH)) unlinkSync(process.env.DB_PATH);
@@ -336,6 +338,70 @@ test('206C(1H)-style scenario: retract an approved row with NO replacement — i
   // retraction must not permanently block the identity
   const r = await diffAndDraft([{ category: 'vendor_tds_rate', payload: { section: 'r7', description: 'y', rate_pct: 0.2, threshold_amount: 6000000 }, effective_from: '2027-01-01', source_ref: 's3' }]);
   assert.equal(r.created, 1);
+});
+
+// ---------- daily refresh job (lib/refresh.js) ----------
+
+test('runRefresh() drafts synthetic rows, records a success heartbeat, never approves anything', async () => {
+  const rows = [
+    { category: 'gst_rate', payload: { hsn_code: 'refresh-a', rate_pct: 18 }, effective_from: '2026-01-01', source_ref: 's' },
+    { category: 'gst_rate', payload: { hsn_code: 'refresh-b', rate_pct: 5 }, effective_from: '2026-01-01', source_ref: 's' },
+  ];
+  const result = await runRefresh({ rows });
+  assert.equal(result.created, 2);
+  assert.equal(result.rejected.length, 0);
+
+  const drafted = (await listAll()).filter((r) => r.payload.hsn_code === 'refresh-a' || r.payload.hsn_code === 'refresh-b');
+  assert.equal(drafted.length, 2);
+  assert.ok(drafted.every((r) => !r.approved_at), 'runRefresh must never approve anything, only draft');
+
+  const heartbeat = await latestRefreshRun();
+  assert.equal(heartbeat.id, result.runId);
+  assert.equal(heartbeat.status, 'success');
+  assert.equal(heartbeat.created, 2);
+  assert.ok(heartbeat.completed_at);
+});
+
+test('runRefresh() is idempotent — a second run against the same input creates zero new rows', async () => {
+  const rows = [{ category: 'gst_rate', payload: { hsn_code: 'refresh-c', rate_pct: 18 }, effective_from: '2026-01-01', source_ref: 's' }];
+  const r1 = await runRefresh({ rows });
+  assert.equal(r1.created, 1);
+  const r2 = await runRefresh({ rows });
+  assert.equal(r2.created, 0);
+  assert.equal(r2.unchanged, 1);
+});
+
+test('runRefresh() records a failed heartbeat and rethrows when the pipeline rejects invalid input, without touching prior data', async () => {
+  const before = await listAll();
+  const invalidRows = [{ category: 'gst_rate', payload: { rate_pct: 18 }, effective_from: '2026-01-01', source_ref: 's' }]; // missing hsn_code/category — fails validateDraft
+  await assert.rejects(() => runRefresh({ rows: invalidRows }));
+
+  const heartbeat = await latestRefreshRun();
+  assert.equal(heartbeat.status, 'failed');
+  assert.ok(heartbeat.error_message);
+  assert.ok(heartbeat.completed_at);
+
+  const after = await listAll();
+  assert.equal(after.length, before.length, 'a failed run must not have written any rate_changes rows');
+});
+
+test('checkRefreshKey requires x-refresh-key to exactly match REFRESH_JOB_SECRET', () => {
+  process.env.REFRESH_JOB_SECRET = 'test-refresh-secret-123';
+  assert.equal(checkRefreshKey({ headers: new Headers({ 'x-refresh-key': 'test-refresh-secret-123' }) }), true);
+  assert.equal(checkRefreshKey({ headers: new Headers({ 'x-refresh-key': 'wrong' }) }), false);
+  assert.equal(checkRefreshKey({ headers: new Headers({ 'x-admin-key': 'test-refresh-secret-123' }) }), false, 'the admin key header must not satisfy the refresh check');
+  assert.equal(checkRefreshKey({ headers: new Headers() }), false);
+});
+
+test('the refresh route only exports POST and GET — POST for the cron trigger, GET for status', () => {
+  // Same next/server resolution constraint as the tenant-facing route test above — text-level check.
+  const path = fileURLToPath(new URL('../app/api/refresh/route.js', import.meta.url));
+  const src = readFileSync(path, 'utf8');
+  const verbs = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+  const exportedVerbs = verbs.filter((v) => new RegExp(`export\\s+async\\s+function\\s+${v}\\b`).test(src));
+  assert.deepEqual(exportedVerbs.sort(), ['GET', 'POST']);
+  assert.ok(src.includes('checkRefreshKey'), 'POST must be gated by the refresh secret, not the admin key');
+  assert.ok(src.includes('checkAdminKey'), 'GET must be gated by the admin key');
 });
 
 // ---------- explicitly out of scope, documented rather than faked ----------
